@@ -5,7 +5,6 @@ import android.content.Context;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemClock;
 import android.support.v7.widget.AppCompatButton;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -116,7 +115,7 @@ public class RecordButton extends AppCompatButton {
             tempFileName = getDefaultName();
         }
 
-        mFile = tempFilePath + "/" + tempFileName + ".mp4";
+        mFile = tempFilePath + "/" + tempFileName;
         mStartTime = System.currentTimeMillis();
 
         if (mMediaRecorder == null){
@@ -149,10 +148,10 @@ public class RecordButton extends AppCompatButton {
     }
 
     public void finishRecording(){
-        long now = SystemClock.currentThreadTimeMillis();
+        long now = System.currentTimeMillis();
         intervalTime = now - mStartTime;
         //如果时间不到一秒，那就提示然后删掉
-        if (now - mStartTime < MIN_INTERVAL_TIME){
+        if (intervalTime < MIN_INTERVAL_TIME){
             cancelRecording();
             Toast.makeText(getContext(),"时间太短！",Toast.LENGTH_SHORT).show();
         }else {
@@ -188,19 +187,24 @@ public class RecordButton extends AppCompatButton {
             mDialog.dismiss();
         }
 
+        Toast.makeText(getContext(),"保存到：" + getmFile() + "," + (getIntervalTime() / 1000) + "秒",Toast.LENGTH_SHORT).show();
+
     }
 
     public void showDialog(){
         if (mDialog == null){
-            mDialog = new Dialog(getContext(),R.style.RecordDialog);
+            mDialog = new Dialog(getContext(),R.style.RecordDialog);  //
+            View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.record_dialog_layout, null);
+            volumeImage = dialogView.findViewById(R.id.record_volume_image);
+            recordTimeText = dialogView.findViewById(R.id.record_time_text);
+            recordTipText = dialogView.findViewById(R.id.record_tip_text);
+            mDialog.addContentView(dialogView,
+                    new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            mDialog.show();
+        }else {
+            mDialog.show();
         }
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.record_dialog_layout, null);
-        volumeImage = dialogView.findViewById(R.id.record_volume_image);
-        recordTimeText = dialogView.findViewById(R.id.record_time_text);
-        recordTipText = dialogView.findViewById(R.id.record_tip_text);
-        mDialog.addContentView(dialogView,
-                new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        mDialog.show();
+
 
     }
 
@@ -235,6 +239,14 @@ public class RecordButton extends AppCompatButton {
 
     public void setmFileName(String mFileName) {
         this.mFileName = mFileName;
+    }
+
+    public String getmFile(){
+        return mFile;
+    }
+
+    public int getIntervalTime(){
+        return  (int) intervalTime;
     }
 
 
