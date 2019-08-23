@@ -116,7 +116,7 @@ public class RecordButton extends AppCompatButton {
             tempFileName = getDefaultName();
         }
 
-        mFile = tempFilePath + "/" + tempFileName + ".mp4";
+        mFile = tempFilePath + "/" + tempFileName;
 
         if (mMediaRecorder == null){
             mMediaRecorder = new MediaRecorder();
