@@ -6,6 +6,8 @@
 
     <item
         android:id="@android:id/progress">
+        <!--clip 裁剪图片显示，也就是说可以动态的显示图片的范围 -->
+        <!--clipOrientation 表示要动态裁剪的方向，gravity表示从哪里开始 -->
         <clip
             android:clipOrientation="vertical"
             android:drawable="@mipmap/record_view_green"

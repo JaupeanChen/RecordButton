@@ -6,3 +6,11 @@
         android:width="0.03dp" />
     <corners android:radius="10dp" />
 </shape>
+
+<!--<shape android:shape=["rectangle" | "oval" | "line" | "ring"] >-->
+     <!--<gradient />渐变 -->
+     <!--<solid />填充 -->
+     <!--<stroke />描边 -->
+     <!--<padding />内边距-->
+     <!--<corners />圆角-->
+<!--<shape />-->

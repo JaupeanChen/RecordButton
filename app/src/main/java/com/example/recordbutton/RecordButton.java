@@ -157,6 +157,7 @@ public class RecordButton extends AppCompatButton {
         }else {
             //正常结束录音
             stopRecording();
+            Toast.makeText(getContext(),"保存到：" + getFile() + "," + (getIntervalTime() / 1000) + "秒",Toast.LENGTH_LONG).show();
 
             //进行音频转换为文件
 
@@ -186,8 +187,6 @@ public class RecordButton extends AppCompatButton {
         if (mDialog.isShowing()){
             mDialog.dismiss();
         }
-
-        Toast.makeText(getContext(),"保存到：" + getmFile() + "," + (getIntervalTime() / 1000) + "秒",Toast.LENGTH_SHORT).show();
 
     }
 
@@ -241,7 +240,7 @@ public class RecordButton extends AppCompatButton {
         this.mFileName = mFileName;
     }
 
-    public String getmFile(){
+    public String getFile(){
         return mFile;
     }
 
