@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="#8000"
+    android:background="@drawable/button_dialog_view"
     android:orientation="vertical"
     android:padding="5dp">
 
@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_margin="5dp"
-        android:text="00:05"/>
+        android:text="00:00"/>
 
     <TextView
         android:id="@+id/record_tip_text"

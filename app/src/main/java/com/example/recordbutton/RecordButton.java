@@ -1,12 +1,10 @@
 package com.example.recordbutton;
 
-import android.annotation.TargetApi;
 import android.app.Dialog;
 import android.content.Context;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemClock;
 import android.support.v7.widget.AppCompatButton;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -15,13 +13,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
 public class RecordButton extends AppCompatButton {
-    public static final int MAX_INTERVAL_TIME = 6 * 1000;
+    public static final int MAX_INTERVAL_TIME = 60 * 1000;
     public static final int MIN_INTERVAL_TIME = 1000;
     public int MAX_CANCEL_LENGTH = -200;
 
@@ -36,6 +35,7 @@ public class RecordButton extends AppCompatButton {
     //文件名前缀
     private String mPref;
     private long mStartTime;
+    private long intervalTime;
 
     private MediaRecorder mMediaRecorder;
     private Dialog mDialog;
@@ -74,15 +74,14 @@ public class RecordButton extends AppCompatButton {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getAction();
-        MAX_CANCEL_LENGTH = - getMeasuredHeight() / 2;
         switch (action){
             case MotionEvent.ACTION_DOWN:
-                startY = (int) getY();
-                mStartTime = SystemClock.currentThreadTimeMillis();
+                MAX_CANCEL_LENGTH = - getMeasuredHeight() / 2;
+                startY = (int) event.getY();
                 prepareAndStartRecord();
                 break;
             case MotionEvent.ACTION_UP:
-                int endY = (int) getY();
+                int endY = (int) event.getY();
                 if (endY - startY < MAX_CANCEL_LENGTH){
                     cancelRecording();
                 }else {
@@ -90,7 +89,7 @@ public class RecordButton extends AppCompatButton {
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
-                int nowY = (int) getY();
+                int nowY = (int) event.getY();
                 if (nowY - startY < MAX_CANCEL_LENGTH){
                     recordTipText.setText("松开取消发送");
                 }else {
@@ -103,7 +102,7 @@ public class RecordButton extends AppCompatButton {
 
     public void prepareAndStartRecord(){
         String tempFilePath;
-        if (mFilePath != null){
+        if (mFilePath != null){     //如果初始化时mFilePath = "" ，则要用TextUtil.isEmpty()来判断，也就是isEmpty还可以对s.length()=0进行判断
             tempFilePath = mFilePath;
         }else {
             tempFilePath = getDefaultPath();
@@ -117,6 +116,8 @@ public class RecordButton extends AppCompatButton {
         }
 
         mFile = tempFilePath + "/" + tempFileName;
+
+        mStartTime = System.currentTimeMillis();
 
         if (mMediaRecorder == null){
             mMediaRecorder = new MediaRecorder();
@@ -136,11 +137,11 @@ public class RecordButton extends AppCompatButton {
 //            mMediaRecorder.setOutputFile(mFile);
 //            mMediaRecorder.setOutputFile(mFilePath);
             mMediaRecorder.prepare();
-            mMediaRecorder.start();
         }catch (IOException e){
             e.printStackTrace();
         }
 
+        mMediaRecorder.start();
         showDialog();
         mThread = new RecordingThread();
         mThread.start();
@@ -148,14 +149,19 @@ public class RecordButton extends AppCompatButton {
     }
 
     public void finishRecording(){
-        long now = SystemClock.currentThreadTimeMillis();
+        long now = System.currentTimeMillis();
+        intervalTime = now - mStartTime;
         //如果时间不到一秒，那就提示然后删掉
-        if (now - mStartTime < MIN_INTERVAL_TIME){
-            recordTipText.setText("时间过短！");
+        if (intervalTime < MIN_INTERVAL_TIME){
             cancelRecording();
+            Toast.makeText(getContext(),"时间太短！",Toast.LENGTH_SHORT).show();
         }else {
             //正常结束录音
             stopRecording();
+            Toast.makeText(getContext(),"保存到：" + getFile() + "," + (getIntervalTime() / 1000) + "秒",Toast.LENGTH_LONG).show();
+
+            //进行音频转换为文件
+
         }
     }
 
@@ -175,22 +181,30 @@ public class RecordButton extends AppCompatButton {
         }
         if (mMediaRecorder != null){
             mMediaRecorder.stop();
+            mMediaRecorder.reset();
+            mMediaRecorder.release();
             mMediaRecorder = null;
         }
-        mDialog.dismiss();
+        if (mDialog.isShowing()){
+            mDialog.dismiss();
+        }
+
     }
 
     public void showDialog(){
         if (mDialog == null){
-            mDialog = new Dialog(getContext());
+            mDialog = new Dialog(getContext(),R.style.RecordDialog);  //
+            View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.record_dialog_layout, null);
+            volumeImage = dialogView.findViewById(R.id.record_volume_image);
+            recordTimeText = dialogView.findViewById(R.id.record_time_text);
+            recordTipText = dialogView.findViewById(R.id.record_tip_text);
+            mDialog.addContentView(dialogView,
+                    new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            mDialog.show();
+        }else {
+            mDialog.show();
         }
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.record_dialog_layout, null);
-        volumeImage = dialogView.findViewById(R.id.record_volume_image);
-        recordTimeText = findViewById(R.id.record_time_text);
-        recordTipText = findViewById(R.id.record_tip_text);
-        mDialog.addContentView(dialogView,
-                new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        mDialog.show();
+
 
     }
 
@@ -227,6 +241,14 @@ public class RecordButton extends AppCompatButton {
         this.mFileName = mFileName;
     }
 
+    public String getFile(){
+        return mFile;
+    }
+
+    public int getIntervalTime(){
+        return  (int) intervalTime;
+    }
+
 
 
     class MyHandler extends Handler{
@@ -234,22 +256,24 @@ public class RecordButton extends AppCompatButton {
         public void handleMessage(Message msg) {
             switch (msg.what){
                 case VOLUME_WHAT_100:
-                    long volume = (long) msg.obj;
-                    volumeImage.getDrawable().setLevel((int) volume);
+                    int volume =  (int) msg.obj;
+                    if (volumeImage != null){
+                        volumeImage.getDrawable().setLevel(3000 + 6000 * volume /90);
+                    }
                     break;
                 case TIME_WHAT_101:
-                    long currentTime = SystemClock.currentThreadTimeMillis();
-                    int time = (int) (currentTime - mStartTime) / 1000;
+                    long currentTime = System.currentTimeMillis();
+                    int time = (int) ((currentTime - mStartTime) / 1000);
                     int min = time / 60;
                     int second = time % 60;
-                    if (min > 10){
-                        if (second > 10){
+                    if (min >= 10){
+                        if (second >= 10){
                             recordTimeText.setText(min + ":" + second);
                         }else {
                             recordTimeText.setText(min + ":" + "0" + second);
                         }
                     }else {
-                        if (second > 10){
+                        if (second >= 10){
                             recordTimeText.setText("0" + min + ":" + second);
                         }else {
                             recordTimeText.setText("0" + min + ":" + "0" + second);
@@ -277,18 +301,30 @@ public class RecordButton extends AppCompatButton {
                 }catch (InterruptedException e){
                     e.printStackTrace();
                 }
-                long volume = mMediaRecorder.getMaxAmplitude();
-                Message volumeMessage = mHandler.obtainMessage();
-                volumeMessage.obj = volume;
-                volumeMessage.what = VOLUME_WHAT_100;
-                mHandler.sendMessage(volumeMessage);
+                if (mMediaRecorder == null || !isRunning){
+                    break;
+                }
 
-                long nowTime = SystemClock.currentThreadTimeMillis();
+                long nowTime = System.currentTimeMillis();
                 if (nowTime - mStartTime > MAX_INTERVAL_TIME){
                     mHandler.sendEmptyMessage(STOP_WHAT_102);
                 }
 
                 mHandler.sendEmptyMessage(TIME_WHAT_101);
+
+                int volume = mMediaRecorder.getMaxAmplitude();
+                if (volume != 0){
+                    int v = (int) (20 * Math.log(volume) / Math.log(10));
+                    Message volumeMessage = mHandler.obtainMessage();
+                    volumeMessage.obj = v;
+                    volumeMessage.what = VOLUME_WHAT_100;
+                    mHandler.sendMessage(volumeMessage);
+                }
+
+
+
+
+
 
 
 
