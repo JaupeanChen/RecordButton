@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -32,7 +33,9 @@ public class MainActivity extends AppCompatActivity {
 
     public boolean isReplay;
     public static final int TIME_WHAT_100 = 100;
-    public static final int PROGRESS_WHAT_101 = 101;
+    public static final int Finish_WHAT_101 = 101;
+    public static final int UNSTICK_WAHT = 200;
+    public static final int STICK_WAHT = 201;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +53,6 @@ public class MainActivity extends AppCompatActivity {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-//                nowTime.setText(String.valueOf(progress));
                 if (progress >= 10){
                     nowTime.setText("00:" + progress);
                 }else {
@@ -60,34 +62,30 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-//                stopTimer();
-                isPlaying = false;
-                player.pause();
-
-//                try {
-//                    synchronized (thread){
-//                        thread.wait();
-//                    }
-//
-//                }catch (InterruptedException e){
-//                    e.printStackTrace();
-//                }
-
-
-
+                if (isPlaying && player.isPlaying()){
+                    seekBar.setTag(player.isPlaying());
+                    isPlaying = false;
+                    player.pause();
+                    playButton.setActivated(false);
+                }else {
+                    seekBar.setTag(false);
+                }
 
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-//                getProgressing();
-                isPlaying = true;
-                player.seekTo(seekBar.getProgress());
-                player.start();
-
-
-
-
+                if ((boolean)seekBar.getTag()){
+                    playButton.setActivated(true);
+                    player.seekTo(seekBar.getProgress()*1000);
+                    player.start();
+                    Log.i("MediaPlayer", "onStopTrackingTouch: " + player.getCurrentPosition());
+                    thread = new MyThread();
+                    thread.start();
+                    isPlaying = true;
+                }else {
+                    player.seekTo(seekBar.getProgress()*1000);
+                }
             }
         });
 
@@ -95,17 +93,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (!isPlaying){
-                    if (isReplay){
-                        initMediaPlayer();
-                    }
                     playButton.setActivated(true);
                     player.start();
-//                    getProgressing();
                     thread = new MyThread();
                     thread.start();
                     isPlaying = true;
-//                    thread = new Thread(new SeekBarRunnable());
-//                    thread.start();
                 }else {
                     playButton.setActivated(false);
                     player.pause();
@@ -116,29 +108,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void getProgressing(){
-        timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                int p = player.getCurrentPosition();
-                seekBar.setProgress(p);
-//                nowTime.setText("00:0" + p);
-            }
-        },0,200);
-    }
 
-    public void stopTimer(){
-        if (timer!=null){
-            timer.cancel();
-        }
-    }
-
-    public void initAndPreparePlay(){
-
-
-
-    }
 
     public void initMediaPlayer(){
         String name = getExternalFilesDir("audio").list()[0];
@@ -149,7 +119,6 @@ public class MainActivity extends AppCompatActivity {
         }catch (IOException e){
             e.printStackTrace();
         }
-
     }
 
     public void initTotalTime(){
@@ -174,13 +143,13 @@ public class MainActivity extends AppCompatActivity {
                 }
                 int nowPosition = player.getCurrentPosition();
                 if (nowPosition == player.getDuration()){
-                    playingHandler.sendEmptyMessage(PROGRESS_WHAT_101);
+                    playingHandler.sendEmptyMessage(Finish_WHAT_101);
                 }
                 Message timeMsg = playingHandler.obtainMessage();
                 timeMsg.obj = nowPosition;
                 timeMsg.what = TIME_WHAT_100;
+                //实时更新进度条
                 playingHandler.sendMessage(timeMsg);
-
             }
         }
     }
@@ -191,30 +160,39 @@ public class MainActivity extends AppCompatActivity {
             if (msg.what == TIME_WHAT_100){
                 int time = (int)msg.obj;
                 int second = time / 1000;
-//                if (second >= 10){
-//                    nowTime.setText("00:" + second);
-//                }else {
-//                    nowTime.setText("00:0" + second);
-//                }
                 seekBar.setProgress(second);
                 seekBar.animate();
-            }else if (msg.what == PROGRESS_WHAT_101){
-//                player.stop();
+            }else if (msg.what == Finish_WHAT_101){
+//                player.stop();  //调用完stop()之后player就不能播放了
                 playButton.setActivated(false);
                 player.reset();
-                seekBar.setProgress(0);
                 isPlaying = false;
                 isReplay = true;
-
-//                try {
-//                    player.prepare();
-//                }catch (IOException e){
-//                    e.printStackTrace();
-//                }
-
+                initMediaPlayer();
             }
         }
     }
+
+
+    public void getProgressing(){
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                int p = player.getCurrentPosition();
+                seekBar.setProgress(p);
+//                nowTime.setText("00:0" + p);
+            }
+        },0,200);
+    }
+
+    public void stopTimer(){
+        if (timer!=null){
+            timer.cancel();
+        }
+    }
+
+
 
     class SeekBarRunnable implements Runnable{
         @Override

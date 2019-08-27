@@ -2,6 +2,7 @@ package com.example.recordbutton;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Message;
@@ -33,7 +34,7 @@ public class RecordButton extends AppCompatButton {
     private String mFile;
 
     //文件名前缀
-    private String mPref;
+    private int mPref;
     private long mStartTime;
     private long intervalTime;
 
@@ -43,6 +44,8 @@ public class RecordButton extends AppCompatButton {
     private ImageView volumeImage;
     private TextView recordTimeText;
     private TextView recordTipText;
+
+    private SharedPreferences preferences;
 
     //按下button时的Y坐标
     private int startY;
@@ -86,6 +89,11 @@ public class RecordButton extends AppCompatButton {
                     cancelRecording();
                 }else {
                     finishRecording();
+                    preferences = getContext().getSharedPreferences("count",Context.MODE_PRIVATE);
+                    mPref += 1;
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.putInt("count",mPref);
+                    editor.apply();
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
@@ -107,6 +115,9 @@ public class RecordButton extends AppCompatButton {
         }else {
             tempFilePath = getDefaultPath();
         }
+
+        preferences = getContext().getSharedPreferences("count",Context.MODE_PRIVATE);
+        mPref = preferences.getInt("count",0);
 
         String tempFileName;
         if (mFileName != null){
@@ -230,7 +241,7 @@ public class RecordButton extends AppCompatButton {
      * 默认文件名
      */
     public String getDefaultName(){
-        return mPref + UUID.randomUUID() + ".mp3";
+        return String.valueOf(mPref) + "_" + UUID.randomUUID() + ".mp3";
     }
 
     public String getmFileName() {
